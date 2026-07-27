@@ -330,18 +330,43 @@
             return dateStr;
         }
 
-        // 🔤 ১৬ অক্ষরের পর শব্দ না ভেঙে স্পেস থেকে নতুন লাইন করা
+        // 🔤 শব্দ না ভেঙে প্রতি লাইনে সর্বোচ্চ ১৬ অক্ষরের মধ্যে লাইন ব্রেক করার স্মার্ট ফাংশন
         function formatTextWithWrap(text, limit = 16) {
             if (!text) return '';
-            if (text.length <= limit) return text;
-
-            // ১৬ অক্ষরের পর প্রথম স্পেস (Space) খোঁজা
-            let spaceIndex = text.indexOf(' ', limit);
             
-            if (spaceIndex !== -1) {
-                return text.substring(0, spaceIndex) + '\n' + text.substring(spaceIndex + 1);
+            let words = text.trim().split(/\s+/);
+            let lines = [];
+            let currentLine = '';
+
+            for (let i = 0; i < words.length; i++) {
+                let word = words[i];
+
+                if (word.length > limit) {
+                    if (currentLine.length > 0) {
+                        lines.push(currentLine);
+                        currentLine = '';
+                    }
+                    lines.push(word);
+                    continue;
+                }
+
+                if ((currentLine + (currentLine.length > 0 ? ' ' : '') + word).length > limit) {
+                    lines.push(currentLine);
+                    currentLine = word;
+                } else {
+                    if (currentLine.length > 0) {
+                        currentLine += ' ' + word;
+                    } else {
+                        currentLine = word;
+                    }
+                }
             }
-            return text;
+
+            if (currentLine.length > 0) {
+                lines.push(currentLine);
+            }
+
+            return lines.join('\n');
         }
 
         function handleKeyPress(event) {
