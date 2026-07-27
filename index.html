@@ -110,14 +110,14 @@
         } 
         
         .result-table td { 
-            padding: 4px 0px !important; /* 👈 এখানে আগে ১৪ পিক্সেল ছিল, কমিয়ে ৪ পিক্সেল করা হলো যা ওপর-নিচের গ্যাপ কমাবে */
+            padding: 4px 0px !important; 
             font-size: 22px; 
             color: #000; 
             vertical-align: bottom; 
             font-weight: normal !important; 
             box-sizing: border-box; 
             text-align: left !important; 
-            line-height: 1.1 !important; /* 👈 প্রতিটি লাইনের ভেতরের স্পেস একদম চিপচিপে করার জন্য */
+            line-height: 1.2 !important; 
         }
         
         /* 🎯 বাম পাশের কলামের টেক্সট ব্লক */
@@ -125,22 +125,22 @@
             display: block;
             width: 175px !important; 
             border-bottom: 2px solid #808080 !important;
-            padding-bottom: 1px; /* 👈 আন্ডারলাইনের সাথে লেখার গ্যাপ ৩ থেকে কমিয়ে ১ পিক্সেল করা হলো */
+            padding-bottom: 1px; 
             white-space: nowrap;
         } 
         
-        /* 🎯 ডান পাশের কলামের টেক্সট ব্লক */
+        /* 🎯 ডান পাশের কলামের টেক্সট ব্লক (লাইন ব্রেক সাপোর্ট সহ) */
         .right-underline-block {
             display: block;
             width: 480px !important; 
             border-bottom: 2px solid #808080 !important;
-            padding-bottom: 1px; /* 👈 আন্ডারলাইনের সাথে লেখার গ্যাপ ৩ থেকে কমিয়ে ১ পিক্সেল করা হলো */
-            word-break: break-word;
+            padding-bottom: 1px; 
+            white-space: pre-line; /* 👈 নতুন লাইনে ভাঙার নিয়ম */
+            word-break: keep-all;   /* 👈 যাতে শব্দ মাঝখান দিয়ে না ভেঙে যায় */
         }
 
-        /* 📏 🎯 দুই পাশের আন্ডারলাইন ও লেখাকে একদম গা ঘেঁষে কাছাকাছি আনার জন্য গ্যাপ কমিয়ে দেওয়া হলো */
         .result-table td.field-name { 
-            padding-right: 5px !important; /* 👈 গ্যাপ ১৫ পিক্সেল থেকে কমিয়ে মাত্র ৫ পিক্সেল করা হলো */
+            padding-right: 5px !important; 
         } 
         
         .result-table td.field-value { 
@@ -298,12 +298,53 @@
     <script>
         const appsScriptUrl = "https://script.google.com/macros/s/AKfycbylJixwOEQuwngTgUZcrtlI02vPVno2bf5D3ia16iBzdgtlkGg7l7Om5k4rPUDmQH_J/exec";
 
+        // 🗓️ ২ নম্বর রিকোয়েস্ট: ফরম্যাট করা তারিখ (যেমন: 21 Jul 2028)
         function formatDate(dateStr) {
             if (!dateStr) return '';
-            if (dateStr.includes('T')) {
-                return dateStr.split('T')[0];
+            const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            
+            let d = new Date(dateStr);
+            if (!isNaN(d.getTime())) {
+                let day = d.getDate();
+                let month = months[d.getMonth()];
+                let year = d.getFullYear();
+                return `${day} ${month} ${year}`;
+            }
+            
+            // যদি ISO String বা সাধারণ Text সরাসরি থাকে
+            let cleanStr = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+            let parts = cleanStr.split(/[-/.]/);
+            if (parts.length === 3) {
+                // YYYY-MM-DD ফরম্যাট
+                if (parts[0].length === 4) {
+                    let year = parts[0];
+                    let month = months[parseInt(parts[1], 10) - 1] || parts[1];
+                    let day = parseInt(parts[2], 10);
+                    return `${day} ${month} ${year}`;
+                } 
+                // DD-MM-YYYY ফরম্যাট
+                else if (parts[2].length === 4) {
+                    let day = parseInt(parts[0], 10);
+                    let month = months[parseInt(parts[1], 10) - 1] || parts[1];
+                    let year = parts[2];
+                    return `${day} ${month} ${year}`;
+                }
             }
             return dateStr;
+        }
+
+        // 🔤 ১ নম্বর রিকোয়েস্ট: ১৮ অক্ষরের পর শব্দ না ভেঙে স্পেস থেকে নতুন লাইন করা
+        function formatTextWithWrap(text, limit = 18) {
+            if (!text) return '';
+            if (text.length <= limit) return text;
+
+            // ১৮ অক্ষরের পর প্রথম স্পেস (Space) খোঁজা
+            let spaceIndex = text.indexOf(' ', limit);
+            
+            if (spaceIndex !== -1) {
+                return text.substring(0, spaceIndex) + '\n' + text.substring(spaceIndex + 1);
+            }
+            return text;
         }
 
         function handleKeyPress(event) {
@@ -330,17 +371,19 @@
 
                 if(certData) {
                     document.getElementById('r_cno').innerText = certData.cno || '';
-                    document.getElementById('r_name').innerText = certData.name || '';
+                    
+                    // ১৮ অক্ষরের পর স্পেস থেকে ভেঙে লাইনে নেওয়ার জন্য ফাংশন ব্যবহার
+                    document.getElementById('r_name').innerText = formatTextWithWrap(certData.name || '');
                     document.getElementById('r_id').innerText = certData.id || '';
                     
                     document.getElementById('r_dob').innerText = formatDate(certData.dob);
                     document.getElementById('r_from').innerText = formatDate(certData.from);
                     document.getElementById('r_to').innerText = formatDate(certData.to);
                     
-                    document.getElementById('r_title').innerText = certData.title || '';
+                    document.getElementById('r_title').innerText = formatTextWithWrap(certData.title || '');
                     document.getElementById('r_type').innerText = certData.type || '';
                     document.getElementById('r_nation').innerText = certData.nation || '';
-                    document.getElementById('r_comp').innerText = certData.comp || '';
+                    document.getElementById('r_comp').innerText = formatTextWithWrap(certData.comp || '');
                     document.getElementById('r_cert_type').innerText = certData.cert_type || '';
 
                     container.style.display = "block";
